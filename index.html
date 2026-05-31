@@ -7354,7 +7354,7 @@ function revealAllUpTo(targetEl) {
     
     if (!foundTarget) {
       card.classList.remove('lazy-hidden');
-      if (targetEl.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING) {
+      if (targetEl.compareDocumentPosition(card) & 4) {
         foundTarget = true;
       }
     } else {
@@ -7474,7 +7474,12 @@ function scrollToDate(dateId) {
     }
     
     revealAllUpTo(el);
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    
+    // Add a tiny delay to ensure lazy rendering and layout recalculation are finished,
+    // which completely bypasses the Safari mobile transition scrolling bug!
+    setTimeout(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
   }
 }
 
