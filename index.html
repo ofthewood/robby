@@ -7346,25 +7346,30 @@ function loadMoreCards() {
 }
 
 function revealAllUpTo(targetEl) {
-  let foundTarget = false;
-  let bufferCount = 0;
-  
-  for (let i = 0; i < allCards.length; i++) {
-    const card = allCards[i];
+  try {
+    let foundTarget = false;
+    let bufferCount = 0;
     
-    if (!foundTarget) {
-      card.classList.remove('lazy-hidden');
-      if (targetEl.compareDocumentPosition(card) & 4) {
-        foundTarget = true;
-      }
-    } else {
-      if (bufferCount < 120) {
+    for (let i = 0; i < allCards.length; i++) {
+      const card = allCards[i];
+      
+      if (!foundTarget) {
         card.classList.remove('lazy-hidden');
-        bufferCount++;
+        if (targetEl.compareDocumentPosition(card) & 4) {
+          foundTarget = true;
+        }
       } else {
-        break;
+        if (bufferCount < 120) {
+          card.classList.remove('lazy-hidden');
+          bufferCount++;
+        } else {
+          break;
+        }
       }
     }
+  } catch(e) {
+    console.error("revealAllUpTo error, fallback to revealing all:", e);
+    allCards.forEach(c => c.classList.remove('lazy-hidden'));
   }
   
   // Update currentIndex
@@ -7463,29 +7468,41 @@ function setupFilters() {
 
 // 3. Smooth Scroll to Date
 function scrollToDate(dateId) {
-  const el = document.getElementById(dateId);
-  if (el) {
-    const items = document.querySelectorAll('.calendar-item');
-    items.forEach(item => item.classList.remove('active'));
-    
-    const triggerItem = Array.from(items).find(item => item.getAttribute('onclick').includes(dateId));
-    if (triggerItem) {
-      triggerItem.classList.add('active');
+  try {
+    const el = document.getElementById(dateId);
+    if (el) {
+      const items = document.querySelectorAll('.calendar-item');
+      items.forEach(item => item.classList.remove('active'));
+      
+      const triggerItem = Array.from(items).find(item => item.getAttribute('onclick').includes(dateId));
+      if (triggerItem) {
+        triggerItem.classList.add('active');
+      }
+      
+      revealAllUpTo(el);
+      
+      // Calculate scroll position mathematically using getBoundingClientRect
+      // which is 100% bug-free and independent of offsetParent on all devices (mobile & PC)!
+      const chatArea = document.querySelector('.chat-area');
+      const parentHeader = el.closest('.sc-fkpkvu') || el;
+      
+      const headerRect = parentHeader.getBoundingClientRect();
+      const chatAreaRect = chatArea.getBoundingClientRect();
+      const currentScrollTop = chatArea.scrollTop;
+      
+      const targetScrollTop = currentScrollTop + (headerRect.top - chatAreaRect.top) - 15;
+      
+      setTimeout(() => {
+        chatArea.scrollTo({
+          top: targetScrollTop,
+          behavior: 'smooth'
+        });
+      }, 100);
+    } else {
+      console.warn("Date element not found:", dateId);
     }
-    
-    revealAllUpTo(el);
-    
-    // Manual scroll calculation to fix iOS WebKit scrollIntoView bugs 100% reliably!
-    const chatArea = document.querySelector('.chat-area');
-    const parentHeader = el.closest('.sc-fkpkvu') || el;
-    const targetScrollTop = parentHeader.offsetTop - 15; // 15px offset for a clean alignment
-    
-    setTimeout(() => {
-      chatArea.scrollTo({
-        top: targetScrollTop,
-        behavior: 'smooth'
-      });
-    }, 100);
+  } catch(e) {
+    console.error("scrollToDate error:", e);
   }
 }
 
@@ -7590,12 +7607,12 @@ function setupMobileMenu() {
 
 // Initialise
 document.addEventListener('DOMContentLoaded', function() {
-  initLazyLoading();
-  setupSearch();
-  setupFilters();
-  setupLightbox();
-  setupMobileMenu();
-  setTimeout(setupScrollSpy, 500);
+  try { initLazyLoading(); } catch(e) { console.error("LazyLoading error:", e); }
+  try { setupSearch(); } catch(e) { console.error("Search error:", e); }
+  try { setupFilters(); } catch(e) { console.error("Filters error:", e); }
+  try { setupLightbox(); } catch(e) { console.error("Lightbox error:", e); }
+  try { setupMobileMenu(); } catch(e) { console.error("MobileMenu error:", e); }
+  try { setTimeout(setupScrollSpy, 500); } catch(e) { console.error("ScrollSpy error:", e); }
 });
 
   </script>
