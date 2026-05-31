@@ -7474,23 +7474,28 @@ function scrollToDate(dateId) {
       const items = document.querySelectorAll('.calendar-item');
       items.forEach(item => item.classList.remove('active'));
       
-      const triggerItem = Array.from(items).find(item => item.getAttribute('onclick').includes(dateId));
+      const triggerItem = Array.from(items).find(item => {
+        const onclickAttr = item.getAttribute('onclick');
+        return onclickAttr && onclickAttr.indexOf(dateId) !== -1;
+      });
       if (triggerItem) {
         triggerItem.classList.add('active');
       }
       
       revealAllUpTo(el);
       
-      // Calculate scroll position mathematically using getBoundingClientRect
-      // which is 100% bug-free and independent of offsetParent on all devices (mobile & PC)!
+      // Calculate scroll position relative to the first non-sticky card of the day,
+      // completely bypassing the position: sticky rendering offsets on all devices!
       const chatArea = document.querySelector('.chat-area');
       const parentHeader = el.closest('.sc-fkpkvu') || el;
+      const nextCard = parentHeader.nextElementSibling;
+      const scrollTarget = nextCard || parentHeader;
       
-      const headerRect = parentHeader.getBoundingClientRect();
+      const targetRect = scrollTarget.getBoundingClientRect();
       const chatAreaRect = chatArea.getBoundingClientRect();
       const currentScrollTop = chatArea.scrollTop;
       
-      const targetScrollTop = currentScrollTop + (headerRect.top - chatAreaRect.top) - 15;
+      const targetScrollTop = currentScrollTop + (targetRect.top - chatAreaRect.top) - 80;
       
       setTimeout(() => {
         chatArea.scrollTo({
