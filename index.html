@@ -7475,11 +7475,17 @@ function scrollToDate(dateId) {
     
     revealAllUpTo(el);
     
-    // Add a tiny delay to ensure lazy rendering and layout recalculation are finished,
-    // which completely bypasses the Safari mobile transition scrolling bug!
+    // Manual scroll calculation to fix iOS WebKit scrollIntoView bugs 100% reliably!
+    const chatArea = document.querySelector('.chat-area');
+    const parentHeader = el.closest('.sc-fkpkvu') || el;
+    const targetScrollTop = parentHeader.offsetTop - 15; // 15px offset for a clean alignment
+    
     setTimeout(() => {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 150);
+      chatArea.scrollTo({
+        top: targetScrollTop,
+        behavior: 'smooth'
+      });
+    }, 100);
   }
 }
 
