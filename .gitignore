@@ -1,4 +1,6 @@
 # Ignorer les sauvegardes et fichiers temporaires
 robby_original_backup.html
+robby_1an_original_backup.html
 *.py
 *.txt
+
