@@ -7565,10 +7565,7 @@ function setupLightbox() {
     if (chatArea) {
       savedScrollTop = chatArea.scrollTop;
     }
-    // Hide the entire background dashboard to unload offscreen GPU textures on iOS Safari/Chrome
-    if (dashboard) {
-      dashboard.style.visibility = 'hidden';
-    }
+    window.isLightboxOpen = true; // Set global flag for scroll lock
     lightbox.style.display = 'flex';
     lightboxImg.src = imgSrc;
     lightboxDownload.href = imgSrc;
@@ -7576,13 +7573,9 @@ function setupLightbox() {
   }
 
   function closeLightbox() {
+    window.isLightboxOpen = false; // Reset global flag
     lightbox.style.display = 'none';
-    // Restore background dashboard rendering
-    if (dashboard) {
-      dashboard.style.visibility = '';
-    }
     if (chatArea) {
-      // Force scroll position restoration after viewport layout completes
       setTimeout(() => {
         chatArea.scrollTop = savedScrollTop;
       }, 0);
