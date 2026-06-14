@@ -7613,6 +7613,39 @@ function setupLightbox() {
   });
 }
 
+// Helper functions for Last Viewed Day tracking
+function updateLastViewedWidget(dateId, dateText) {
+  const container = document.getElementById('last-viewed-container');
+  const textSpan = document.getElementById('last-viewed-text');
+  const btn = document.getElementById('last-viewed-btn');
+  
+  if (container && textSpan && btn) {
+    textSpan.innerText = dateText;
+    container.style.display = 'block';
+    btn.onclick = function() {
+      scrollToDate(dateId);
+    };
+  }
+}
+
+function markLastViewedInList(dateId) {
+  const calendarItems = document.querySelectorAll('.calendar-list .calendar-item');
+  calendarItems.forEach(item => {
+    const existingIcon = item.querySelector('.last-viewed-icon');
+    if (existingIcon) existingIcon.remove();
+    item.classList.remove('last-viewed-item');
+    
+    const onclickAttr = item.getAttribute('onclick');
+    if (onclickAttr && onclickAttr.includes(dateId)) {
+      item.classList.add('last-viewed-item');
+      
+      const icon = document.createElement('i');
+      icon.className = 'fa-solid fa-bookmark last-viewed-icon';
+      item.appendChild(icon);
+    }
+  });
+}
+
 // 5. Active Date Highlight on scroll
 function setupScrollSpy() {
   const chatArea = document.querySelector('.chat-area');
