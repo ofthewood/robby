@@ -7653,12 +7653,20 @@ function setupScrollSpy() {
   const calendarItems = document.querySelectorAll('.calendar-item');
   
   chatArea.addEventListener('scroll', function() {
+    if (window.isLightboxOpen) {
+      chatArea.scrollTop = window.savedScrollTop;
+      return;
+    }
     let currentActiveId = null;
-    const scrollPos = chatArea.scrollTop + 150; // offset
+    const chatAreaRect = chatArea.getBoundingClientRect();
     
     headers.forEach(header => {
-      if (header.style.display !== 'none' && header.offsetTop <= scrollPos) {
-        currentActiveId = header.id;
+      if (header.style.display !== 'none') {
+        const rect = header.getBoundingClientRect();
+        const topInChat = rect.top - chatAreaRect.top;
+        if (topInChat <= 160) {
+          currentActiveId = header.id;
+        }
       }
     });
 
