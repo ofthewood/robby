@@ -7512,12 +7512,24 @@ function scrollToDate(dateId) {
       const items = document.querySelectorAll('.calendar-item');
       items.forEach(item => item.classList.remove('active'));
       
-      const triggerItem = Array.from(items).find(item => {
-        const onclickAttr = item.getAttribute('onclick');
-        return onclickAttr && onclickAttr.indexOf(dateId) !== -1;
-      });
+      let activeText = "";
+      const triggerItem = Array.from(items).find(item => item.getAttribute('data-date-id') === dateId);
       if (triggerItem) {
         triggerItem.classList.add('active');
+        const textSpan = triggerItem.querySelector('.calendar-text');
+        if (textSpan) activeText = textSpan.innerText;
+      }
+      
+      // Update last viewed date directly when navigating programmatically
+      if (activeText) {
+        try {
+          localStorage.setItem('lastViewedDateId', dateId);
+          localStorage.setItem('lastViewedDateText', activeText);
+          updateLastViewedWidget(dateId, activeText);
+          markLastViewedInList(dateId);
+        } catch(e) {
+          console.error("Error saving last viewed date programmatically:", e);
+        }
       }
       
       revealAllUpTo(el);
@@ -7535,19 +7547,37 @@ function scrollToDate(dateId) {
       
       const targetScrollTop = currentScrollTop + (targetRect.top - chatAreaRect.top) - 80;
       
+      // Set programmatic scroll flag to prevent scrollspy from overwriting the explicit target
+      window.isProgrammaticScrolling = true;
+      if (window.programmaticScrollTimeout) {
+        clearTimeout(window.programmaticScrollTimeout);
+      }
+      
+      const resetScrollFlag = () => {
+        window.isProgrammaticScrolling = false;
+        if (chatArea) {
+          chatArea.removeEventListener('scrollend', resetScrollFlag);
+        }
+      };
+      if (chatArea) {
+        chatArea.addEventListener('scrollend', resetScrollFlag);
+      }
+      
+      window.programmaticScrollTimeout = setTimeout(resetScrollFlag, 1200);
+      
       setTimeout(() => {
         chatArea.scrollTo({
           top: targetScrollTop,
           behavior: 'smooth'
         });
-      }, 100);
-    } else {
-      console.warn("Date element not found:", dateId);
+      }, 50);
     }
   } catch(e) {
-    console.error("scrollToDate error:", e);
+    console.error("Error scrolling to date:", e);
   }
 }
+
+
 
 // 4. Image Lightbox
 function setupLightbox() {
@@ -7614,6 +7644,22 @@ function setupLightbox() {
 }
 
 // Helper functions for Last Viewed Day tracking
+function initCalendarDataIds() {
+  const calendarItems = document.querySelectorAll('.calendar-item');
+  calendarItems.forEach(item => {
+    let dateId = item.getAttribute('data-date-id');
+    if (!dateId) {
+      const onclickAttr = item.getAttribute('onclick');
+      if (onclickAttr) {
+        const match = onclickAttr.toString().match(/'([^']+)'/);
+        if (match) {
+          item.setAttribute('data-date-id', match[1]);
+        }
+      }
+    }
+  });
+}
+
 function updateLastViewedWidget(dateId, dateText) {
   const container = document.getElementById('last-viewed-container');
   const textSpan = document.getElementById('last-viewed-text');
@@ -7635,8 +7681,7 @@ function markLastViewedInList(dateId) {
     if (existingIcon) existingIcon.remove();
     item.classList.remove('last-viewed-item');
     
-    const onclickAttr = item.getAttribute('onclick');
-    if (onclickAttr && onclickAttr.includes(dateId)) {
+    if (item.getAttribute('data-date-id') === dateId) {
       item.classList.add('last-viewed-item');
       
       const icon = document.createElement('i');
@@ -7644,6 +7689,19 @@ function markLastViewedInList(dateId) {
       item.appendChild(icon);
     }
   });
+}
+
+function restoreLastViewedDate() {
+  try {
+    const savedId = localStorage.getItem('lastViewedDateId');
+    const savedText = localStorage.getItem('lastViewedDateText');
+    if (savedId && savedText) {
+      updateLastViewedWidget(savedId, savedText);
+      markLastViewedInList(savedId);
+    }
+  } catch(e) {
+    console.error("Error restoring last viewed date:", e);
+  }
 }
 
 // 5. Active Date Highlight on scroll
@@ -7673,8 +7731,8 @@ function setupScrollSpy() {
     if (currentActiveId) {
       let activeText = "";
       calendarItems.forEach(item => {
-        const onclickAttr = item.getAttribute('onclick');
-        if (onclickAttr && onclickAttr.includes(currentActiveId)) {
+        const dateId = item.getAttribute('data-date-id');
+        if (dateId === currentActiveId) {
           item.classList.add('active');
           const textSpan = item.querySelector('.calendar-text');
           if (textSpan) activeText = textSpan.innerText;
@@ -7683,7 +7741,7 @@ function setupScrollSpy() {
         }
       });
       
-      if (activeText && activeText !== localStorage.getItem('lastViewedDateText')) {
+      if (!window.isProgrammaticScrolling && activeText && activeText !== localStorage.getItem('lastViewedDateText')) {
         try {
           localStorage.setItem('lastViewedDateId', currentActiveId);
           localStorage.setItem('lastViewedDateText', activeText);
@@ -7725,6 +7783,7 @@ function setupMobileMenu() {
 
 // Initialise
 document.addEventListener('DOMContentLoaded', function() {
+  try { initCalendarDataIds(); } catch(e) { console.error("CalendarDataIds error:", e); }
   try { initLazyLoading(); } catch(e) { console.error("LazyLoading error:", e); }
   try { setupSearch(); } catch(e) { console.error("Search error:", e); }
   try { setupFilters(); } catch(e) { console.error("Filters error:", e); }
@@ -7732,16 +7791,17 @@ document.addEventListener('DOMContentLoaded', function() {
   try { setupMobileMenu(); } catch(e) { console.error("MobileMenu error:", e); }
   try { setTimeout(setupScrollSpy, 500); } catch(e) { console.error("ScrollSpy error:", e); }
   
-  // Restore last viewed date
-  try {
-    const savedId = localStorage.getItem('lastViewedDateId');
-    const savedText = localStorage.getItem('lastViewedDateText');
-    if (savedId && savedText) {
-      updateLastViewedWidget(savedId, savedText);
-      markLastViewedInList(savedId);
-    }
-  } catch(e) {
-    console.error("Error restoring last viewed date:", e);
+  restoreLastViewedDate();
+});
+
+// Restore last viewed day on back/forward navigation (BFCache) and tab activation
+window.addEventListener('pageshow', function(event) {
+  restoreLastViewedDate();
+});
+
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') {
+    restoreLastViewedDate();
   }
 });
 
