@@ -255,6 +255,37 @@ body {
   font-size: 13px;
 }
 
+/* TRACKING DERNIERE LECTURE */
+.last-viewed-container {
+  padding: 0 16px;
+  margin-bottom: 16px;
+}
+.last-viewed-container .stats-title {
+  padding: 0 !important;
+  margin-top: 0;
+  font-size: 10px;
+  color: #a78bfa;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+}
+.last-viewed-btn {
+  border: 1px dashed rgba(124, 58, 237, 0.3) !important;
+  background: rgba(124, 58, 237, 0.05) !important;
+  margin-top: 4px;
+}
+.last-viewed-btn:hover {
+  background: rgba(124, 58, 237, 0.12) !important;
+  border-color: rgba(124, 58, 237, 0.6) !important;
+}
+.last-viewed-icon {
+  margin-left: auto;
+  font-size: 10px;
+  color: #a78bfa;
+}
+
 /* MAIN CONTENT */
 .main-content {
   flex: 1;
@@ -958,6 +989,15 @@ body {
       <!-- Calendrier de navigation -->
       <div class="sidebar-calendar-section">
         <h4 class="stats-title">Calendrier</h4>
+        <div class="last-viewed-container" id="last-viewed-container" style="display: none;">
+          <h4 class="stats-title">
+            <i class="fa-solid fa-bookmark"></i> Dernière lecture
+          </h4>
+          <button class="calendar-item last-viewed-btn" id="last-viewed-btn">
+            <span class="calendar-dot" style="background-color: #a78bfa; box-shadow: 0 0 8px #a78bfa;"></span>
+            <span class="calendar-text" id="last-viewed-text">...</span>
+          </button>
+        </div>
         <div class="calendar-list">
           
     <button class="calendar-item" onclick="scrollToDate('date-0')">
@@ -7556,6 +7596,39 @@ function setupLightbox() {
   });
 }
 
+// Helper functions for Last Viewed Day tracking
+function updateLastViewedWidget(dateId, dateText) {
+  const container = document.getElementById('last-viewed-container');
+  const textSpan = document.getElementById('last-viewed-text');
+  const btn = document.getElementById('last-viewed-btn');
+  
+  if (container && textSpan && btn) {
+    textSpan.innerText = dateText;
+    container.style.display = 'block';
+    btn.onclick = function() {
+      scrollToDate(dateId);
+    };
+  }
+}
+
+function markLastViewedInList(dateId) {
+  const calendarItems = document.querySelectorAll('.calendar-list .calendar-item');
+  calendarItems.forEach(item => {
+    const existingIcon = item.querySelector('.last-viewed-icon');
+    if (existingIcon) existingIcon.remove();
+    item.classList.remove('last-viewed-item');
+    
+    const onclickAttr = item.getAttribute('onclick');
+    if (onclickAttr && onclickAttr.includes(dateId)) {
+      item.classList.add('last-viewed-item');
+      
+      const icon = document.createElement('i');
+      icon.className = 'fa-solid fa-bookmark last-viewed-icon';
+      item.appendChild(icon);
+    }
+  });
+}
+
 // 5. Active Date Highlight on scroll
 function setupScrollSpy() {
   const chatArea = document.querySelector('.chat-area');
@@ -7573,13 +7646,28 @@ function setupScrollSpy() {
     });
 
     if (currentActiveId) {
+      let activeText = "";
       calendarItems.forEach(item => {
-        if (item.getAttribute('onclick').includes(currentActiveId)) {
+        const onclickAttr = item.getAttribute('onclick');
+        if (onclickAttr && onclickAttr.includes(currentActiveId)) {
           item.classList.add('active');
+          const textSpan = item.querySelector('.calendar-text');
+          if (textSpan) activeText = textSpan.innerText;
         } else {
           item.classList.remove('active');
         }
       });
+      
+      if (activeText && activeText !== localStorage.getItem('lastViewedDateText')) {
+        try {
+          localStorage.setItem('lastViewedDateId', currentActiveId);
+          localStorage.setItem('lastViewedDateText', activeText);
+          updateLastViewedWidget(currentActiveId, activeText);
+          markLastViewedInList(currentActiveId);
+        } catch(e) {
+          console.error("Error saving last viewed date:", e);
+        }
+      }
     }
   });
 }
@@ -7618,6 +7706,18 @@ document.addEventListener('DOMContentLoaded', function() {
   try { setupLightbox(); } catch(e) { console.error("Lightbox error:", e); }
   try { setupMobileMenu(); } catch(e) { console.error("MobileMenu error:", e); }
   try { setTimeout(setupScrollSpy, 500); } catch(e) { console.error("ScrollSpy error:", e); }
+  
+  // Restore last viewed date
+  try {
+    const savedId = localStorage.getItem('lastViewedDateId');
+    const savedText = localStorage.getItem('lastViewedDateText');
+    if (savedId && savedText) {
+      updateLastViewedWidget(savedId, savedText);
+      markLastViewedInList(savedId);
+    }
+  } catch(e) {
+    console.error("Error restoring last viewed date:", e);
+  }
 });
 
   </script>
