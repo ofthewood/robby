@@ -431,6 +431,8 @@ body {
   display: flex;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 150px;
 }
 
 .sc-jnLVoO::before {
@@ -7554,73 +7556,66 @@ function setupLightbox() {
   const lightboxCaption = document.getElementById('lightbox-caption');
   const lightboxDownload = document.getElementById('lightbox-download');
   const closeBtn = document.querySelector('.lightbox-close');
+  const chatArea = document.querySelector('.chat-area');
+  const dashboard = document.querySelector('.dashboard');
+  
+  let savedScrollTop = 0;
+
+  function openLightbox(imgSrc, captionText) {
+    if (chatArea) {
+      savedScrollTop = chatArea.scrollTop;
+    }
+    // Hide the entire background dashboard to unload offscreen GPU textures on iOS Safari/Chrome
+    if (dashboard) {
+      dashboard.style.visibility = 'hidden';
+    }
+    lightbox.style.display = 'flex';
+    lightboxImg.src = imgSrc;
+    lightboxDownload.href = imgSrc;
+    lightboxCaption.innerText = captionText;
+  }
+
+  function closeLightbox() {
+    lightbox.style.display = 'none';
+    // Restore background dashboard rendering
+    if (dashboard) {
+      dashboard.style.visibility = '';
+    }
+    if (chatArea) {
+      // Force scroll position restoration after viewport layout completes
+      setTimeout(() => {
+        chatArea.scrollTop = savedScrollTop;
+      }, 0);
+    }
+  }
 
   const chartContainers = document.querySelectorAll('.sc-bvZjhv');
   chartContainers.forEach(container => {
     container.addEventListener('click', function(e) {
       const img = container.querySelector('img');
       if (img) {
-        lightbox.style.display = 'flex';
-        lightboxImg.src = img.src;
-        lightboxDownload.href = img.src;
-        
+        let caption = "Graphique d'analyse technique";
         const card = container.closest('.sc-jnLVoO');
         if (card) {
           const textSpan = card.querySelector('.sc-dGXKLq');
-          lightboxCaption.innerText = textSpan ? textSpan.innerText : "Graphique d'analyse technique";
-        } else {
-          lightboxCaption.innerText = "Graphique d'analyse technique";
+          if (textSpan) caption = textSpan.innerText;
         }
+        openLightbox(img.src, caption);
       }
     });
   });
 
-  closeBtn.addEventListener('click', function() {
-    lightbox.style.display = 'none';
-  });
+  closeBtn.addEventListener('click', closeLightbox);
 
   lightbox.addEventListener('click', function(e) {
     if (e.target === lightbox || e.target === closeBtn) {
-      lightbox.style.display = 'none';
+      closeLightbox();
     }
   });
 
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-      lightbox.style.display = 'none';
-    }
-  });
-}
-
-// Helper functions for Last Viewed Day tracking
-function updateLastViewedWidget(dateId, dateText) {
-  const container = document.getElementById('last-viewed-container');
-  const textSpan = document.getElementById('last-viewed-text');
-  const btn = document.getElementById('last-viewed-btn');
-  
-  if (container && textSpan && btn) {
-    textSpan.innerText = dateText;
-    container.style.display = 'block';
-    btn.onclick = function() {
-      scrollToDate(dateId);
-    };
-  }
-}
-
-function markLastViewedInList(dateId) {
-  const calendarItems = document.querySelectorAll('.calendar-list .calendar-item');
-  calendarItems.forEach(item => {
-    const existingIcon = item.querySelector('.last-viewed-icon');
-    if (existingIcon) existingIcon.remove();
-    item.classList.remove('last-viewed-item');
-    
-    const onclickAttr = item.getAttribute('onclick');
-    if (onclickAttr && onclickAttr.includes(dateId)) {
-      item.classList.add('last-viewed-item');
-      
-      const icon = document.createElement('i');
-      icon.className = 'fa-solid fa-bookmark last-viewed-icon';
-      item.appendChild(icon);
+    if (e.key === 'Escape' && lightbox.style.display === 'flex') {
+      closeLightbox();
     }
   });
 }
